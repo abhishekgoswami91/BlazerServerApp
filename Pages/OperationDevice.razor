@@ -1,0 +1,68 @@
+﻿@page "/OperationService"
+
+@using BlazorServerApp.Data
+@using BlazorServerApp.Models
+@inject IOperationDeviceService OperationService
+@inject IModalService modal
+<h1>Operation Device</h1>
+<div style="float:left;margin-bottom:10px;">
+    <button @onclick="@(()=>modal.Show<AddOperationDialog>())" class="btn btn-success">Add Operation</button>
+</div>
+
+@if (operationDevices == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Operation Name</th>
+                <th>Order In Which To Perform</th>
+                <th>Device Name</th>
+                <th>Device Type</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var operation in operationDevices)
+            {
+                <tr>
+                    <td>@operation.Name</td>
+                    <td>@operation.OrderInWhichToPerform</td>
+                    <td>@operation.Device.Name</td>
+                    <td>@operation.Device.DeviceType</td>
+                    <td>
+                        <button @onclick="@(() => AddOperationDevice(operation.OperationID))" class="btn btn-primary">Add Device</button>
+                        <button @onclick="@(() => DeleteOperation(operation.OperationID))" class="btn btn-danger"><span class="oi oi-trash" aria-hidden="true"></span>Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    protected List<OperationDeviceModel> operationDevices = new();
+    protected override async Task OnInitializedAsync()
+    {
+        operationDevices = await OperationService.GetAllOperations();
+    }
+    void AddOperationDevice(int OperationId)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(AddDeviceDialog.OperationId), OperationId);
+        var options = new ModalOptions();
+        options.HideHeader = true;
+        modal.Show<AddDeviceDialog>("Add Device", parameters, options);
+    }
+    void DeleteOperation(int OperationId)
+    {
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(DeleteOperationDevice.OperationId), OperationId);
+        var options = new ModalOptions();
+        options.HideHeader = true;
+        modal.Show<DeleteOperationDevice>("Delete Operation Device", parameters,options);
+    }
+}

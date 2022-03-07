@@ -1,0 +1,133 @@
+﻿@page "/addoperationdialog"
+@using BlazorServerApp.Data
+@using System
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.Extensions.Logging
+@inject ILogger<AddOperationDialog> Logger
+@inject IWebHostEnvironment Environment
+@inject Microsoft.AspNetCore.Components.NavigationManager navigation
+@inject IOperationDeviceService OperationService
+<div class="modal" tabindex="-1" style="display:block" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Operation</h3>
+                <button type="button" @onclick="Cancel" class="close">
+                    <span aria-hidden="true">X</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@model">
+                    <div class="form-group">
+                        <label for="Name" class="control-label">Operation Name</label>
+                        <InputText class="form-control" @bind-Value="OperationName" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Name" class="control-label">Order In Which To Perform</label>
+                        <InputNumber class="form-control" @bind-Value="OrderInWhichToPerform" />
+                    </div>
+                    <div class="form-group">
+                        <label for="Name" class="control-label">Device Name</label>
+                        <InputText class="form-control" @bind-Value="DeviceName" />
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Gender" class="control-label">Device Type</label>
+                        <InputSelect asp-for="Gender" class="form-control" @bind-Value="DeviceType">
+                            <option value="0">BarcodeScanner</option>
+                            <option value="1">Printer</option>
+                            <option value="2">Camera</option>
+                            <option value="3">SocketTray</option>
+                        </InputSelect>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            Upload up to @maxFileSize bytes:
+                            <InputFile OnChange="@LoadFiles" />
+                        </label>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="modal-footer">
+                <button @onclick="@(() => AddOperation(OperationName,OrderInWhichToPerform,DeviceName,DeviceType))" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+    protected OperationDeviceModel model = new();
+
+    [Parameter]
+    public string DeviceName { get; set; }
+
+    [Parameter]
+    public string OperationName { get; set; }
+
+    [Parameter]
+    public int DeviceType { get; set; }
+
+    [Parameter]
+    public int OrderInWhichToPerform { get; set; }
+
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; }
+
+    protected async void AddOperation(string OperationName, int OrderInWhichToPerform,string DeviceName, int DeviceType)
+    {
+        OperationDeviceModel modelObj = new();
+        foreach (var file in selectedFiles)
+        {
+            Stream stream = file.OpenReadStream();
+            MemoryStream ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            stream.Close();
+
+            modelObj.FileName = file.Name;
+            modelObj.ImageData = ms.ToArray();
+
+            ms.Close();
+
+            var path = $"{Environment.WebRootPath}\\images\\{file.Name}";
+            FileStream fs = File.Create(path);
+
+            await stream.CopyToAsync(fs);
+            stream.Close();
+            fs.Close();
+        }
+        modelObj.Name = OperationName;
+        modelObj.OrderInWhichToPerform = Convert.ToInt32(OrderInWhichToPerform);
+        modelObj.Device = new Device();
+        modelObj.Device.Name = DeviceName;
+        modelObj.Device.DeviceType = (DeviceType)DeviceType;
+        Message = $"file uploaded on server";
+        this.StateHasChanged();
+        OperationService.AddOperation(modelObj, OrderInWhichToPerform);
+        navigation.NavigateTo("/OperationService", forceLoad: true);
+    }
+    void Cancel()
+    {
+        ModalInstance.CancelAsync();
+    }
+
+    private long maxFileSize = 1024 * 15;
+    private int maxAllowedFiles = 1;
+    private bool isLoading;
+    string Message = "No file(s) selected";
+    List<IBrowserFile> selectedFiles = new();
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        selectedFiles.Clear();
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            selectedFiles.Add(file);
+        }
+
+        Message = $"{selectedFiles.Count} file(s) selected";
+        this.StateHasChanged();
+
+        isLoading = false;
+    }
+}
+

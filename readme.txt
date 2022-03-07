@@ -1,0 +1,2 @@
+1). Please find database backup file in "Database_Backup" folder. You need to restore database from that file.
+2). You need to change Server parameter value in ConnectionStrings in appsetting.json file as per your SQL Server Name.
